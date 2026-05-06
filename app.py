@@ -3,60 +3,127 @@ import streamlit as st
 import base64
 from openai import OpenAI
 
-# Function to encode the image to base64
+# ------------------ FUNCIONES ------------------
 def encode_image(image_file):
     return base64.b64encode(image_file.getvalue()).decode("utf-8")
 
+# ------------------ CONFIG ------------------
+st.set_page_config(
+    page_title="Análisis de Imagen",
+    layout="centered",
+    initial_sidebar_state="collapsed"
+)
 
-st.set_page_config(page_title="Analisis de imagen", layout="centered", initial_sidebar_state="collapsed")
-# Streamlit page setup
-st.title("Análisis de Imagen:🤖🏞️")
-ke = st.text_input('Ingresa tu Clave')
+# ------------------ ESTILOS ------------------
+st.markdown("""
+<style>
+
+/* Fondo degradado */
+.stApp {
+    background: linear-gradient(135deg, #00c6ff, #0072ff, #6a11cb);
+    color: white;
+}
+
+/* Títulos */
+.main-title {
+    font-size: 45px;
+    font-weight: 800;
+    text-align: center;
+}
+
+.subtitle {
+    text-align: center;
+    font-size: 18px;
+    margin-bottom: 20px;
+}
+
+/* Card glass */
+.card {
+    background: rgba(255, 255, 255, 0.15);
+    padding: 25px;
+    border-radius: 20px;
+    backdrop-filter: blur(10px);
+    box-shadow: 0px 8px 25px rgba(0,0,0,0.3);
+    margin-top: 20px;
+}
+
+/* Botones */
+.stButton>button {
+    background: linear-gradient(90deg, #00f5a0, #00d9f5);
+    color: black;
+    border-radius: 12px;
+    height: 50px;
+    font-size: 16px;
+    border: none;
+    font-weight: bold;
+}
+
+.stButton>button:hover {
+    transform: scale(1.05);
+    transition: 0.2s;
+}
+
+/* Inputs */
+.stTextInput>div>div>input {
+    border-radius: 10px;
+}
+
+</style>
+""", unsafe_allow_html=True)
+
+# ------------------ HEADER ------------------
+st.markdown('<p class="main-title">🤖 Análisis de Imagen</p>', unsafe_allow_html=True)
+st.markdown('<p class="subtitle">Sube una imagen y obtén una descripción inteligente</p>', unsafe_allow_html=True)
+
+# ------------------ CARD ------------------
+st.markdown('<div class="card">', unsafe_allow_html=True)
+
+# TEXTO DENTRO DE LA CARD
+st.markdown("""
+<div style="text-align:center; font-size:18px; font-weight:600; margin-bottom:15px;">
+📸 Sube una imagen para analizar su contenido
+</div>
+""", unsafe_allow_html=True)
+
+# API KEY
+ke = st.text_input('🔑 Ingresa tu Clave', type="password")
 os.environ['OPENAI_API_KEY'] = ke
 
-
-# Retrieve the OpenAI API Key from secrets
 api_key = os.environ['OPENAI_API_KEY']
-
-# Initialize the OpenAI client with the API key
 client = OpenAI(api_key=api_key)
 
-# File uploader allows user to add their own image
-uploaded_file = st.file_uploader("Upload an image", type=["jpg", "png", "jpeg"])
+# UPLOADER
+uploaded_file = st.file_uploader("📂 Subir imagen", type=["jpg", "png", "jpeg"])
 
 if uploaded_file:
-    # Display the uploaded image
-    with st.expander("Image", expanded = True):
+    with st.expander("🖼 Imagen cargada", expanded=True):
         st.image(uploaded_file, caption=uploaded_file.name, use_container_width=True)
 
-# Toggle for showing additional details input
-show_details = st.toggle("Pregunta algo específico sobre la imagen", value=False)
+# OPCIÓN DETALLES
+show_details = st.toggle("📝 Preguntar algo específico sobre la imagen", value=False)
 
 if show_details:
-    # Text input for additional details about the image, shown only if toggle is True
     additional_details = st.text_area(
-        "Adiciona contexto de la imagen aqui:",
+        "Agrega contexto adicional:",
         disabled=not show_details
     )
 
-# Button to trigger the analysis
-analyze_button = st.button("Analiza la imagen", type="secondary")
+# BOTÓN
+analyze_button = st.button("🔍 Analizar imagen")
 
-# Check if an image has been uploaded, if the API key is available, and if the button has been pressed
+# ------------------ PROCESO ------------------
 if uploaded_file is not None and api_key and analyze_button:
 
     with st.spinner("Analizando ..."):
-        # Encode the image
         base64_image = encode_image(uploaded_file)
     
-        prompt_text = ("Describe what you see in the image in spanish")
+        prompt_text = ("Describe lo que ves en la imagen en español")
     
         if show_details and additional_details:
             prompt_text += (
-                f"\n\nAdditional Context Provided by the User:\n{additional_details}"
+                f"\n\nContexto adicional del usuario:\n{additional_details}"
             )
     
-        # Create the payload for the completion request - CORRECTED FORMAT
         messages = [
             {
                 "role": "user",
@@ -72,27 +139,30 @@ if uploaded_file is not None and api_key and analyze_button:
             }
         ]
     
-        # Make the request to the OpenAI API
         try:
-            # Stream the response
             full_response = ""
             message_placeholder = st.empty()
+
             for completion in client.chat.completions.create(
-                model="gpt-4o", messages=messages,   
-                max_tokens=1200, stream=True
+                model="gpt-4o",
+                messages=messages,
+                max_tokens=1200,
+                stream=True
             ):
-                # Check if there is content to display
                 if completion.choices[0].delta.content is not None:
                     full_response += completion.choices[0].delta.content
                     message_placeholder.markdown(full_response + "▌")
-            # Final update to placeholder after the stream ends
+
             message_placeholder.markdown(full_response)
     
         except Exception as e:
-            st.error(f"An error occurred: {e}")
+            st.error(f"Ocurrió un error: {e}")
+
 else:
-    # Warnings for user action required
     if not uploaded_file and analyze_button:
-        st.warning("Please upload an image.")
+        st.warning("⚠️ Por favor sube una imagen.")
     if not api_key:
-        st.warning("Por favor ingresa tu API key.")
+        st.warning("⚠️ Ingresa tu API key.")
+
+# CIERRE CARD
+st.markdown('</div>', unsafe_allow_html=True)
