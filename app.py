@@ -17,14 +17,11 @@ st.set_page_config(
 # ------------------ ESTILOS ------------------
 st.markdown("""
 <style>
-
-/* Fondo degradado */
 .stApp {
     background: linear-gradient(135deg, #00c6ff, #0072ff, #6a11cb);
     color: white;
 }
 
-/* Títulos */
 .main-title {
     font-size: 45px;
     font-weight: 800;
@@ -37,7 +34,6 @@ st.markdown("""
     margin-bottom: 20px;
 }
 
-/* Card glass */
 .card {
     background: rgba(255, 255, 255, 0.15);
     padding: 25px;
@@ -47,7 +43,6 @@ st.markdown("""
     margin-top: 20px;
 }
 
-/* Botones */
 .stButton>button {
     background: linear-gradient(90deg, #00f5a0, #00d9f5);
     color: black;
@@ -62,12 +57,6 @@ st.markdown("""
     transform: scale(1.05);
     transition: 0.2s;
 }
-
-/* Inputs */
-.stTextInput>div>div>input {
-    border-radius: 10px;
-}
-
 </style>
 """, unsafe_allow_html=True)
 
@@ -78,7 +67,6 @@ st.markdown('<p class="subtitle">Sube una imagen y obtén una descripción intel
 # ------------------ CARD ------------------
 st.markdown('<div class="card">', unsafe_allow_html=True)
 
-# TEXTO DENTRO DE LA CARD
 st.markdown("""
 <div style="text-align:center; font-size:18px; font-weight:600; margin-bottom:15px;">
 📸 Sube una imagen para analizar su contenido
@@ -87,10 +75,14 @@ st.markdown("""
 
 # API KEY
 ke = st.text_input('🔑 Ingresa tu Clave', type="password")
-os.environ['OPENAI_API_KEY'] = ke
 
-api_key = os.environ['OPENAI_API_KEY']
-client = OpenAI(api_key=api_key)
+# 👉 SOLO crear cliente si hay clave
+client = None
+if ke:
+    os.environ['OPENAI_API_KEY'] = ke
+    client = OpenAI(api_key=ke)
+else:
+    st.warning("⚠️ Ingresa tu API key para continuar")
 
 # UPLOADER
 uploaded_file = st.file_uploader("📂 Subir imagen", type=["jpg", "png", "jpeg"])
@@ -103,26 +95,21 @@ if uploaded_file:
 show_details = st.toggle("📝 Preguntar algo específico sobre la imagen", value=False)
 
 if show_details:
-    additional_details = st.text_area(
-        "Agrega contexto adicional:",
-        disabled=not show_details
-    )
+    additional_details = st.text_area("Agrega contexto adicional:")
 
 # BOTÓN
 analyze_button = st.button("🔍 Analizar imagen")
 
 # ------------------ PROCESO ------------------
-if uploaded_file is not None and api_key and analyze_button:
+if uploaded_file is not None and client and analyze_button:
 
     with st.spinner("Analizando ..."):
         base64_image = encode_image(uploaded_file)
     
-        prompt_text = ("Describe lo que ves en la imagen en español")
+        prompt_text = "Describe lo que ves en la imagen en español"
     
         if show_details and additional_details:
-            prompt_text += (
-                f"\n\nContexto adicional del usuario:\n{additional_details}"
-            )
+            prompt_text += f"\n\nContexto adicional:\n{additional_details}"
     
         messages = [
             {
@@ -161,8 +148,6 @@ if uploaded_file is not None and api_key and analyze_button:
 else:
     if not uploaded_file and analyze_button:
         st.warning("⚠️ Por favor sube una imagen.")
-    if not api_key:
-        st.warning("⚠️ Ingresa tu API key.")
 
 # CIERRE CARD
 st.markdown('</div>', unsafe_allow_html=True)
